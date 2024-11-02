@@ -217,5 +217,5 @@ async function selectGoal(socket: net.Socket, slot: string, color: string) {
 
 // Start the TCP server
 server.listen(PORT, () => {
-  console.log(`TCP server running on port ${PORT}`);
+  console.log(`Openrct2-bingosync server listening on port ${PORT}, waiting for clients...`);
 });
