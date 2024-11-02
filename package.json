@@ -1,0 +1,50 @@
+{
+  "name": "openrct2-bingosync",
+  "version": "1.0.0",
+  "description": "OpenRCT2 Bingo Server to interact with Bingosync.com",
+  "keywords": [
+    "openrct2",
+    "openrct2-plugin"
+  ],
+  "author": "",
+  "license": "ISC",
+  "volta": {
+    "node": "20.16.0",
+    "npm": "10.8.2"
+  },
+  "scripts": {
+    "build:ts": "tsc",
+    "build:ncc": "ncc build dist/index.js -o dist",
+    "build:pkg:linux": "pkg dist/index.js --targets node18-linux-x64 --output releases/openrct-bingosync-linux-v$(node -p \"require('./package.json').version\")",
+    "build:pkg:macos": "pkg dist/index.js --targets node18-macos-x64 --output releases/openrct-bingosync-macos-v$(node -p \"require('./package.json').version\")",
+    "build:pkg:win": "pkg dist/index.js --targets node18-win-x64 --output releases/openrct-bingosync-win-v$(node -p \"require('./package.json').version\").exe",
+    "build:pkg": "npm run build:pkg:linux && npm run build:pkg:macos && npm run build:pkg:win",
+    "build": "npm run build:ts && npm run build:ncc && npm run build:pkg",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "axios-cookiejar-support": "^5.0.3",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "tough-cookie": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.8.6",
+    "@types/ws": "^8.5.12",
+    "@vercel/ncc": "^0.38.2",
+    "pkg": "^5.8.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "pkg": {
+    "scripts": "dist/index.js",
+    "assets": [
+      "node_modules/**/*"
+    ],
+    "outputPath": "releases"
+  }
+}
