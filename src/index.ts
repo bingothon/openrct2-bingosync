@@ -3,9 +3,11 @@ import axios from 'axios';
 import { CookieJar } from 'tough-cookie';
 import { wrapper } from 'axios-cookiejar-support';
 
+
+
 const BINGOSYNC_URL = 'https://bingosync.com/';
 const ROOM_PASSPHRASE = generatePassphrase();
-const PORT = 3000;
+const PORT = parseInt(process.argv[2]) || 3000;
 
 // Constants for default values
 const DEFAULT_ROOM_NAME = 'OpenRCT2 Bingo';
@@ -60,7 +62,7 @@ const server = net.createServer((socket) => {
             await getBoard(socket);
           } else if (msg.action === 'selectGoal') {
             console.log(`Selecting goal in slot ${msg.slot} with color ${msg.color}...`);
-            await selectGoal(socket, msg.slot, msg.color);
+            await selectGoal(socket, msg.slot, msg.color, msg.room);
           } else {
             writeMessage(socket, { error: 'Invalid action' });
           }
@@ -197,8 +199,13 @@ async function createOrConnectBoard(
 
       const data = typeof response.data === 'string' ? response.data : '';
       const createdRoomId = roomMatcher(data);
+      
 
       if (createdRoomId) {
+        console.log('Created room ID:', createdRoomId);
+        roomId = createdRoomId;
+        console.log('Room ID at connected:', roomId);
+        console.log('Room ID set to:', roomId, 'at', new Date().toISOString());
         const roomUrl = `${BINGOSYNC_URL}room/${createdRoomId}`;
         writeMessage(socket, {
           message: 'Bingo board created successfully!',
@@ -231,9 +238,12 @@ async function getBoard(socket: net.Socket) {
 }
 
 // Function to select a goal
-async function selectGoal(socket: net.Socket, slot: string, color: string) {
+async function selectGoal(socket: net.Socket, slot: string, color: string, room:string) {
   try {
-    if (!roomId) {
+   
+    console.log('Calling selectGoal at', new Date().toISOString());
+    console.log('Room ID at selectGoal:', room);
+    if (!room) {
       writeMessage(socket, { error: 'Room ID is missing. Cannot select goal.' });
       return;
     }
@@ -245,7 +255,7 @@ async function selectGoal(socket: net.Socket, slot: string, color: string) {
     }
 
     const payload = {
-      room: roomId,
+      room,
       slot,
       color,
       remove_color: false,
