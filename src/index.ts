@@ -55,17 +55,23 @@ interface Arguments {
       description: 'Path to the OpenRCT2 executable',
       default: './OpenRCT2-v0.4.16-linux-x86_64.AppImage',
     })
-    .option('args', {
-      alias: 'a',
-      type: 'array',
-      description: 'Arguments to pass to the OpenRCT2 executable',
-      default: [
-        'host',
-        `${openRCT2Directory}/scenario/bingothon-map.park`,
-        '--headless',
-        '--user-data-path',
-        openRCT2Directory,
-      ],
+    .option('headless', {
+      alias: 'h',
+      type: 'boolean',
+      description: 'Run OpenRCT2 in headless mode',
+      default: true,
+    })
+    .option('user-directory', {
+      alias: 'd',
+      type: 'string',
+      description: 'Path to the OpenRCT2 user directory',
+      default: openRCT2Directory
+    })
+    .option('scenario', {
+      alias: 's',
+      type: 'string',
+      description: 'Path to the OpenRCT2 scenario file',
+      default: `${openRCT2Directory}/scenario/bingothon-map.park`
     })
     .help()
     .alias('help', 'h')
@@ -75,7 +81,12 @@ interface Arguments {
   // Extract values from argv
   const PORT = argv.port;
   const OPENRCT2_COMMAND = argv.command;
-  const OPENRCT2_ARGS = argv.args as string[];
+  const OPENRCT2_ARGS = [
+    'host',
+    argv.scenario,
+    ...(argv.headless ? ['--headless'] : []),
+    ...(argv.userDirectory ? ['--user-directory', argv.userDirectory] : []),
+  ];
 
   console.log("Resolved OpenRCT2 Directory:", openRCT2Directory);
   console.log("Command Line Arguments:", argv);
