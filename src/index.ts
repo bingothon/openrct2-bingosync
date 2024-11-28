@@ -1,13 +1,24 @@
 import net from 'net';
 import axios from 'axios';
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 import { CookieJar } from 'tough-cookie';
 import { wrapper } from 'axios-cookiejar-support';
-
+let serverProcess: ChildProcessWithoutNullStreams | null = null;
 
 
 const BINGOSYNC_URL = 'https://bingosync.com/';
 const ROOM_PASSPHRASE = generatePassphrase();
 const PORT = parseInt(process.argv[2]) || 3000;
+
+// OpenRCT2 constants
+const OPENRCT2_COMMAND = './OpenRCT2-v0.4.16-linux-x86_64.AppImage'; // path to OpenRCT2 executable
+const OPENRCT2_ARGS = [
+  'host',
+  '/path/to/scenario.park',
+  '--headless',
+  '--user-data-path',
+  '/path/to/user_data'
+];
 
 // Constants for default values
 const DEFAULT_ROOM_NAME = 'OpenRCT2 Bingo';
@@ -16,6 +27,91 @@ const DEFAULT_USERNAME = 'openrct2';
 
 let roomId: string | null = null;
 let board: { name: string }[] = [];
+
+// Function to start the OpenRCT2 server
+function startServer(socket?: net.Socket) {
+  if (serverProcess) {
+    console.log('Server is already running. Cannot start a new instance.');
+    if (socket) writeMessage(socket, { error: 'Server is already running.' });
+    return;
+  }
+
+  console.log('Starting OpenRCT2 server...');
+  serverProcess = spawn(OPENRCT2_COMMAND, OPENRCT2_ARGS);
+
+  serverProcess.stdout.on('data', (data) => {
+    console.log(`[OpenRCT2]: ${data}`);
+  });
+
+  serverProcess.stderr.on('data', (data) => {
+    console.error(`[OpenRCT2 Error]: ${data}`);
+  });
+
+  serverProcess.on('close', (code) => {
+    console.log(`OpenRCT2 server exited with code ${code}`);
+    serverProcess = null;
+  });
+
+  if (socket) writeMessage(socket, { message: 'OpenRCT2 server started successfully.' });
+}
+
+// Function to stop the OpenRCT2 server
+function stopServer(socket?: net.Socket) {
+  if (!serverProcess) {
+    console.log('No server is currently running.');
+    if (socket) writeMessage(socket, { error: 'No server is currently running.' });
+    return;
+  }
+
+  console.log('Stopping OpenRCT2 server...');
+  serverProcess.kill('SIGTERM');
+  serverProcess = null;
+
+  if (socket) writeMessage(socket, { message: 'OpenRCT2 server stopped successfully.' });
+}
+
+// Function to restart the OpenRCT2 server
+function restartServer(socket?: net.Socket) {
+  console.log('Restarting OpenRCT2 server...');
+  if (serverProcess) {
+    stopServer();
+  }
+  startServer(socket);
+}
+
+// Function to handle client actions
+async function handleClientMessage(socket: net.Socket, msg: any) {
+  try {
+    switch (msg.action) {
+      case 'start':
+        startServer(socket);
+        break;
+      case 'stop':
+        stopServer(socket);
+        break;
+      case 'restart':
+        restartServer(socket);
+        break;
+      case 'connectOrCreate':
+        console.log('Creating board with client-provided data...');
+        await createOrConnectBoard(socket, msg.boardData, msg.room_name, msg.username, msg.roomId, msg.roomPassword);
+        break;
+      case 'getBoard':
+        console.log('Fetching board...');
+        await getBoard(socket);
+        break;
+      case 'selectGoal':
+        console.log(`Selecting goal in slot ${msg.slot} with color ${msg.color}...`);
+        await selectGoal(socket, msg.slot, msg.color, msg.room);
+        break;
+      default:
+        writeMessage(socket, { error: 'Invalid action' });
+    }
+  } catch (err) {
+    console.error('Error handling client message:', err);
+    writeMessage(socket, { error: 'Error processing action.' });
+  }
+}
 
 function generatePassphrase(length: number = 8): string {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -46,26 +142,14 @@ const server = net.createServer((socket) => {
   socket.on('data', async (data) => {
     buffer += data.toString();
     let messages = buffer.split('\n');
-    buffer = messages.pop() || ''; // Keep any incomplete message in the buffer
+    buffer = messages.pop() || ''; // Keep incomplete message in buffer
 
     for (const message of messages) {
       if (message.trim()) {
         console.log('Received message from client:', message);
         try {
           const msg = JSON.parse(message);
-
-          if (msg.action === 'connectOrCreate') {
-            console.log('Creating board with client-provided data...');
-            await createOrConnectBoard(socket, msg.boardData, msg.room_name, msg.username, msg.roomId, msg.roomPassword);
-          } else if (msg.action === 'getBoard') {
-            console.log('Fetching board...');
-            await getBoard(socket);
-          } else if (msg.action === 'selectGoal') {
-            console.log(`Selecting goal in slot ${msg.slot} with color ${msg.color}...`);
-            await selectGoal(socket, msg.slot, msg.color, msg.room);
-          } else {
-            writeMessage(socket, { error: 'Invalid action' });
-          }
+          await handleClientMessage(socket, msg);
         } catch (err) {
           console.error('Failed to parse client message:', err);
           writeMessage(socket, { error: 'Invalid JSON format' });
@@ -290,3 +374,13 @@ async function selectGoal(socket: net.Socket, slot: string, color: string, room:
 server.listen(PORT, () => {
   console.log(`Openrct2-bingosync server listening on port ${PORT}, waiting for clients...`);
 });
+// Clean up on process exit
+process.on('exit', () => {
+  if (serverProcess) {
+    console.log('Cleaning up OpenRCT2 server process...');
+    serverProcess.kill('SIGTERM');
+  }
+});
+
+process.on('SIGINT', () => process.exit());
+process.on('SIGTERM', () => process.exit());
