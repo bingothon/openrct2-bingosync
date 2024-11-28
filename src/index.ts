@@ -55,12 +55,6 @@ interface Arguments {
       description: 'Path to the OpenRCT2 executable',
       default: './OpenRCT2-v0.4.16-linux-x86_64.AppImage',
     })
-    .option('headless', {
-      alias: 'h',
-      type: 'boolean',
-      description: 'Run OpenRCT2 in headless mode',
-      default: true,
-    })
     .option('user-directory', {
       alias: 'd',
       type: 'string',
@@ -73,6 +67,12 @@ interface Arguments {
       description: 'Path to the OpenRCT2 scenario file',
       default: `${openRCT2Directory}/scenario/bingothon-map.park`
     })
+    .option('headless', {
+      alias: 'h',
+      type: 'boolean',
+      description: 'Run OpenRCT2 in headless mode',
+      default: true, // Set to `true` by default
+    })
     .help()
     .alias('help', 'h')
     .strict() // Ensure only defined options are allowed
@@ -81,15 +81,19 @@ interface Arguments {
   // Extract values from argv
   const PORT = argv.port;
   const OPENRCT2_COMMAND = argv.command;
+
+  // Construct arguments dynamically
   const OPENRCT2_ARGS = [
     'host',
     argv.scenario,
-    ...(argv.headless ? ['--headless'] : []),
-    ...(argv.userDirectory ? ['--user-directory', argv.userDirectory] : []),
+    ...(argv.headless ? ['--headless'] : []), // Add headless only if true
+    '--user-data-path',
+    argv.userDirectory
   ];
 
   console.log("Resolved OpenRCT2 Directory:", openRCT2Directory);
   console.log("Command Line Arguments:", argv);
+  console.log("Spawn Arguments:", OPENRCT2_ARGS);
 
   const BINGOSYNC_URL = 'https://bingosync.com/';
   const ROOM_PASSPHRASE = generatePassphrase();
@@ -97,7 +101,6 @@ interface Arguments {
   // Constants for default values
   const DEFAULT_ROOM_NAME = 'OpenRCT2 Bingo';
   const DEFAULT_USERNAME = 'openrct2';
-
 
   let roomId: string | null = null;
   let board: { name: string }[] = [];
@@ -111,6 +114,9 @@ interface Arguments {
     }
 
     console.log('Starting OpenRCT2 server...');
+    console.log('Using Command:', OPENRCT2_COMMAND);
+    console.log('With Arguments:', OPENRCT2_ARGS);
+
     serverProcess = spawn(OPENRCT2_COMMAND, OPENRCT2_ARGS);
 
     serverProcess.stdout.on('data', (data) => {
