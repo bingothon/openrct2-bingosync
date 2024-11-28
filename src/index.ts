@@ -13,33 +13,33 @@ import { exec } from "child_process";
 import path from "path";
 
 async function getOpenRCT2Directory() {
-  const platform = process.platform;
+  try {
+    const platform = process.platform;
 
-  if (platform === "win32") {
-    // Windows
-    const { stdout } = await promisify(exec)(
-      "powershell -command \"[Environment]::GetFolderPath('MyDocuments')\""
-    );
-    return path.join(stdout.trim(), "OpenRCT2");
-  } else if (platform === "darwin") {
-    // MacOS
-    return path.join(os.homedir(), "Library", "Application Support", "OpenRCT2");
-  } else {
-    // Linux
-    const configFolder = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
-    return path.join(configFolder, "OpenRCT2");
+    if (platform === "win32") {
+      // Windows
+      const { stdout } = await promisify(exec)(
+        "powershell -command \"[Environment]::GetFolderPath('MyDocuments')\""
+      );
+      return path.join(stdout.trim(), "OpenRCT2");
+    } else if (platform === "darwin") {
+      // MacOS
+      return path.join(os.homedir(), "Library", "Application Support", "OpenRCT2");
+    } else {
+      // Linux
+      const configFolder = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
+      return path.join(configFolder, "OpenRCT2");
+    }
+  } catch (error) {
+    console.error("Error in getOpenRCT2Directory:", error);
+    throw error; // Re-throw to prevent silent failure
   }
 }
 
-interface Arguments {
-  port: number;
-  command: string;
-  args: string[];
-}
 
 // Main async wrapper to pre-resolve async values
 (async () => {
-  const openRCT2Directory = await getOpenRCT2Directory();
+  const openRCT2Directory = await getOpenRCT2Directory() || "./OpenRCT2";
 
   // Parse arguments with pre-resolved values
   const argv = yargs(hideBin(process.argv))
