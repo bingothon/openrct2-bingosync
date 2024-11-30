@@ -3,8 +3,6 @@ import axios from 'axios';
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 import { CookieJar } from 'tough-cookie';
 import { wrapper } from 'axios-cookiejar-support';
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
 let serverProcess: ChildProcessWithoutNullStreams | null = null;
 
 import os from "os";
@@ -79,7 +77,7 @@ async function getOpenRCT2Directory() {
       command: './OpenRCT2-v0.4.16-linux-x86_64.AppImage',
       userDirectory: openRCT2Directory,
       scenario: `${openRCT2Directory}/scenario/bingothon-map.park`,
-      headless: true,
+      headless: false,
     };
 
     function parseArgs(args: string[], defaults: Record<string, any>) {
@@ -174,12 +172,31 @@ async function getOpenRCT2Directory() {
         if (socket) writeMessage(socket, { error: 'No server is currently running.' });
         return;
       }
-
-      console.log('Stopping OpenRCT2 server...');
-      serverProcess.kill('SIGTERM');
+    
+      console.log('Force-stopping OpenRCT2 server...');
+    
+      // Attempt to kill the process using platform-specific methods
+      try {
+        if (process.platform === 'win32') {
+          // Windows: Use taskkill to forcefully terminate
+          const { execSync } = require('child_process');
+          execSync(`taskkill /PID ${serverProcess.pid} /F /T`);
+        } else {
+          // Unix-like systems: Use kill command
+          if (serverProcess?.pid !== undefined) {
+            process.kill(serverProcess.pid, 'SIGKILL');
+          } else {
+            console.error('Cannot kill process: PID is undefined.');
+          }
+        }
+        console.log(`Server process with PID ${serverProcess.pid} forcefully stopped.`);
+      } catch (error) {
+        console.error(`Error forcefully stopping server process:`, error);
+      }
+    
       serverProcess = null;
-
-      if (socket) writeMessage(socket, { message: 'OpenRCT2 server stopped successfully.' });
+    
+      if (socket) writeMessage(socket, { message: 'OpenRCT2 server forcefully stopped successfully.' });
     }
 
     // Function to restart the OpenRCT2 server
@@ -187,8 +204,10 @@ async function getOpenRCT2Directory() {
       console.log('Restarting OpenRCT2 server...');
       if (serverProcess) {
         stopServer();
+        setTimeout(() => startServer(socket), 3000); // Delay of 3 seconds
+      } else {
+        startServer(socket);
       }
-      startServer(socket);
     }
     startServer();
     // Function to handle client actions
