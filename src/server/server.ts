@@ -11,6 +11,7 @@ export function startTcpServer(port: number) {
 
         socket.pipe(split2()).on("data", (line: string) => {
             try {
+                console.log(`Received data from client: ${line}`); // Add this log
                 const msg = JSON.parse(line);
                 handleClientMessage(socket, msg);
             } catch (err) {
