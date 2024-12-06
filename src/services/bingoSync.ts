@@ -135,7 +135,51 @@ export async function getBoard(socket: net.Socket) {
 }
 
 export async function selectGoal(socket: net.Socket, slot: string, color: string, room: string) {
-    // Implementation for selecting a goal
+    try {
+
+        console.log('Calling selectGoal at', new Date().toISOString());
+        console.log('Room ID at selectGoal:', room);
+        if (!room) {
+            writeMessage(socket, { error: 'Room ID is missing. Cannot select goal.' });
+            return;
+        }
+
+        const csrfToken = jar.getCookiesSync(BINGOSYNC_URL).find(cookie => cookie.key === 'csrftoken')?.value;
+        if (!csrfToken) {
+            writeMessage(socket, { error: 'CSRF token is missing. Cannot select goal.' });
+            return;
+        }
+
+        const payload = {
+            room,
+            slot,
+            color,
+            remove_color: false,
+        };
+
+        const response = await client.put(
+            `${BINGOSYNC_URL}api/select`,
+            JSON.stringify(payload),
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken,
+                },
+            }
+        );
+
+        if (response.status === 200) {
+            writeMessage(socket, { message: `Goal in slot ${slot} selected with color ${color}.` });
+        } else {
+            console.error('Unexpected response status:', response.status);
+            console.error('Response data:', response.data);
+            writeMessage(socket, { error: `Failed to select goal. Status: ${response.status}.` });
+        }
+    } catch (error) {
+        console.error('Error selecting goal:', error);
+        writeMessage(socket, { error: 'An error occurred while selecting the goal.' });
+    }
 }
 
 // Fetch a new CSRF token
