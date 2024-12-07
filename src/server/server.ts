@@ -33,12 +33,12 @@ export function startTcpServer(port: number) {
     });
 
     // Handle broadcast events from Twitch IRC
-    server.on("broadcast", (commandData) => {
-        console.log(`Broadcasting command: ${commandData} to ${clients.length} clients`);
-
-        // Forward the command to all connected clients
-        clients.forEach((socket) => {
-            socket.write(JSON.stringify({ action: "command", data: commandData }) + "\n");
+    server.on("broadcast", (message) => {
+        console.log(`Broadcasting message: ${JSON.stringify(message)} to ${clients.length} clients`);
+    
+        // Forward the broadcast message to all connected clients
+        clients.forEach((client) => {
+            client.write(JSON.stringify(message) + "\n");
         });
     });
 
