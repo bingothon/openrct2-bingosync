@@ -5,5 +5,4 @@ export enum ClientActions {
     CONNECT_OR_CREATE = 'connectOrCreate',
     GET_BOARD = 'getBoard',
     SELECT_GOAL = 'selectGoal',
-    ADD_CASH = 'addCash',
 }

@@ -6,7 +6,6 @@ import { cacheOptions } from './server/clientHandlers';
 import os from 'os';
 import dotenv from 'dotenv';
 import { startTwitchClient } from './twitch/twitch';
-import { startGameActions } from './game/gameActions';
 
 dotenv.config();
 
@@ -30,7 +29,4 @@ console.log('Starting OpenRCT2 server...');
 startOpenRCT2Server(argv);
 
 console.log('Starting Twitch IRC client...');
-startTwitchClient(tcpServer); 
-
-console.log('Starting Game Actions...');
-startGameActions(tcpServer); 
+startTwitchClient(tcpServer); // Pass TCP socket to Twitch client
