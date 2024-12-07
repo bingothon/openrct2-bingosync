@@ -43,6 +43,15 @@ export async function handleClientMessage(socket: net.Socket, msg: any) {
             case ClientActions.SELECT_GOAL:
                 await selectGoal(socket, msg.slot, msg.color, msg.room);
                 break;
+            case ClientActions.ADD_CASH:
+                if (typeof msg.amount !== 'number' || isNaN(msg.amount)) {
+                    socket.write(JSON.stringify({ error: 'Invalid or missing amount.' }) + '\n');
+                    return;
+                }
+                console.log(`Adding ${msg.amount} cash to OpenRCT2 server...`);
+                // Replace the following line with your implementation to add cash
+                socket.write(JSON.stringify({ action: 'addCash', amount: msg.amount, message: `Cash added successfully: ${msg.amount}` }) + '\n');
+                break;
             default:
                 socket.write(JSON.stringify({ error: 'Invalid action' }) + '\n');
         }
