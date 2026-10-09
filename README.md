@@ -1,7 +1,7 @@
 
 # OpenRCT2 BingoSync Server
 
-**OpenRCT2 BingoSync** runs the OpenRCT2 Bingo servers and connects their games to [Bingosync.com](https://bingosync.com).
+**OpenRCT2 BingoSync** runs the OpenRCT2 Bingo servers and connects their games to BingoSync ([bingosync.bingothon.com](https://bingosync.bingothon.com/) by default).
 
 It needs the openrct2-bingo plugin installed in your OpenRCT2 user folder, get it at: https://github.com/bingothon/openrct2-bingo
 
@@ -34,6 +34,7 @@ Stop it with Ctrl+C; that stops all servers.
 | `headless` | `true` | Run the servers without a game window |
 | `tcpPort` | `12414` | Port the plugin connects to (local only) |
 | `gameDurationYears` | `2` | Game length in in-game years |
+| `bingosyncUrl` | `https://bingosync.bingothon.com/` | BingoSync instance the games' rooms are created on |
 
 Each server's folder gets a copy of `config.ini`, `groups.json`, `users.json` (admins) and `objects.idx` the first time (edit the copy to change one server, e.g. its groups) and shares `object/` and `plugin/` with the base folder, so all servers use the same plugin build.
 

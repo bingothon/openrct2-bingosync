@@ -10,8 +10,10 @@ const DEFAULT_SESSION = 'default';
 export class Servers {
     private readonly servers = new Map<string, OpenRCT2Server>();
     private readonly sessions = new Map<string, BingoSyncSession>();
+    private readonly bingosyncUrl: string;
 
     constructor(config: ManagerConfig) {
+        this.bingosyncUrl = config.bingosyncUrl;
         for (const server of config.servers) {
             this.servers.set(server.id, new OpenRCT2Server(server, config));
         }
@@ -26,7 +28,7 @@ export class Servers {
         const key = id && this.servers.has(id) ? id : DEFAULT_SESSION;
         let session = this.sessions.get(key);
         if (!session) {
-            session = new BingoSyncSession(key);
+            session = new BingoSyncSession(key, this.bingosyncUrl);
             this.sessions.set(key, session);
         }
         return session;

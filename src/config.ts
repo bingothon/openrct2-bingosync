@@ -28,6 +28,8 @@ export interface ManagerConfig {
     tcpPort: number;
     /** Game length in in-game years */
     gameDurationYears: number;
+    /** BingoSync instance the games' rooms are created on */
+    bingosyncUrl: string;
     servers: ServerConfig[];
 }
 
@@ -38,6 +40,7 @@ const DEFAULTS: Omit<ManagerConfig, 'servers' | 'scenario'> = {
     headless: true,
     tcpPort: 12414,
     gameDurationYears: 2,
+    bingosyncUrl: 'https://bingosync.bingothon.com/',
 };
 
 const MODES: GameMode[] = ['coop', 'pvp', 'lockout'];
@@ -74,5 +77,6 @@ export function loadConfig(file: string): ManagerConfig {
     config.scenario = expandHome(config.scenario);
     config.baseUserDirectory = expandHome(config.baseUserDirectory);
     config.dataDirectory = expandHome(config.dataDirectory);
+    if (!config.bingosyncUrl.endsWith('/')) config.bingosyncUrl += '/';
     return config;
 }

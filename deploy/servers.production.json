@@ -6,6 +6,7 @@
     "headless": true,
     "tcpPort": 12414,
     "gameDurationYears": 2,
+    "bingosyncUrl": "https://bingosync.bingothon.com/",
     "servers": [
         { "id": "coop", "mode": "coop", "port": 11753, "name": "[BINGO] OpenRCT2 Bingo COOP (hosted by Bingothon)" },
         { "id": "pvp", "mode": "pvp", "port": 11754, "name": "[BINGO] OpenRCT2 Bingo PVP (hosted by Bingothon)" },

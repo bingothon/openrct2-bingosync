@@ -5,12 +5,11 @@ import net from 'net';
 import { generatePassphrase, roomMatcher } from '../server/utils';
 import { GameMode } from '../config';
 
-const BINGOSYNC_URL = 'https://bingosync.com/';
 const DEFAULT_ROOM_NAME = 'OpenRCT2 Bingo';
 const DEFAULT_USERNAME = 'openrct2';
-/** bingosync.com room types */
+/** BingoSync room types */
 const LOCKOUT_MODE = { nonLockout: '1', lockout: '2' };
-/** bingosync.com can be down for a while: keep trying to create/join the room for 30 minutes */
+/** BingoSync can be down for a while: keep trying to create/join the room for 30 minutes */
 const RETRY_DELAY_MS = 60_000;
 const MAX_ATTEMPTS = 30;
 
@@ -28,7 +27,7 @@ function writeMessage(socket: net.Socket, message: object) {
 }
 
 /**
- * One bingosync.com connection: its own cookies (session, CSRF token) and room. Every
+ * One BingoSync connection: its own cookies (session, CSRF token) and room. Every
  * OpenRCT2 server gets its own, so their rooms don't get mixed up.
  */
 export class BingoSyncSession {
@@ -39,14 +38,18 @@ export class BingoSyncSession {
     /** Bumped by every new room request, so an older one stops retrying */
     private requestCount = 0;
 
-    constructor(private readonly name: string) {}
+    constructor(
+        private readonly name: string,
+        /** BingoSync instance, e.g. https://bingosync.bingothon.com/ */
+        private readonly baseUrl: string,
+    ) {}
 
     private log(message: string) {
         console.log(`[${this.name}] [BingoSync] ${message}`);
     }
 
     /**
-     * Create or join the room, retrying while bingosync.com is unreachable. Stops when the plugin
+     * Create or join the room, retrying while BingoSync is unreachable. Stops when the plugin
      * disconnects or asks again; the plugin only hears about the last failure.
      */
     async connectOrCreate(socket: net.Socket, request: ConnectOrCreateRequest) {
@@ -87,20 +90,20 @@ export class BingoSyncSession {
             player_name: username || DEFAULT_USERNAME,
             passphrase: roomPassword,
         });
-        const response = await this.client.post(`${BINGOSYNC_URL}room/${roomId}`, payload, {
+        const response = await this.client.post(`${this.baseUrl}room/${roomId}`, payload, {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                Referer: BINGOSYNC_URL,
+                Referer: this.baseUrl,
                 'X-CSRFToken': csrfToken,
             },
         });
-        const board = await this.client.get(`${BINGOSYNC_URL}room/${roomId}/board`);
+        const board = await this.client.get(`${this.baseUrl}room/${roomId}/board`);
 
         if (response.status === 200 && board.status === 200) {
             this.roomId = roomId;
             writeMessage(socket, {
                 message: 'Successfully connected to existing bingo board!',
-                roomUrl: `${BINGOSYNC_URL}room/${roomId}`,
+                roomUrl: `${this.baseUrl}room/${roomId}`,
                 passphrase: roomPassword,
                 boardData: board.data,
             });
@@ -127,10 +130,10 @@ export class BingoSyncSession {
             seed: '',
             hide_card: 'on',
         };
-        const response = await this.client.post(BINGOSYNC_URL, new URLSearchParams(payload), {
+        const response = await this.client.post(this.baseUrl, new URLSearchParams(payload), {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                Referer: BINGOSYNC_URL,
+                Referer: this.baseUrl,
                 'X-CSRFToken': csrfToken,
             },
         });
@@ -141,7 +144,7 @@ export class BingoSyncSession {
             this.log(`Created room ${createdRoomId}`);
             writeMessage(socket, {
                 message: 'Bingo board created successfully!',
-                roomUrl: `${BINGOSYNC_URL}room/${createdRoomId}`,
+                roomUrl: `${this.baseUrl}room/${createdRoomId}`,
                 passphrase,
             });
             return null;
@@ -157,14 +160,14 @@ export class BingoSyncSession {
                 return;
             }
 
-            const csrfToken = this.jar.getCookiesSync(BINGOSYNC_URL).find((cookie) => cookie.key === 'csrftoken')?.value;
+            const csrfToken = this.jar.getCookiesSync(this.baseUrl).find((cookie) => cookie.key === 'csrftoken')?.value;
             if (!csrfToken) {
                 writeMessage(socket, { error: 'CSRF token is missing. Cannot select goal.' });
                 return;
             }
 
             const response = await this.client.put(
-                `${BINGOSYNC_URL}api/select`,
+                `${this.baseUrl}api/select`,
                 JSON.stringify({ room: roomId, slot, color, remove_color: false }),
                 {
                     headers: {
@@ -189,12 +192,12 @@ export class BingoSyncSession {
 
     private async fetchCsrfToken(): Promise<string | null> {
         try {
-            await this.client.get(BINGOSYNC_URL);
-            const cookies = await this.jar.getCookies(BINGOSYNC_URL);
+            await this.client.get(this.baseUrl);
+            const cookies = await this.jar.getCookies(this.baseUrl);
             const csrfTokenCookie = cookies.find((cookie) => cookie.key === 'csrftoken');
             return csrfTokenCookie ? csrfTokenCookie.value : null;
         } catch (error) {
-            this.log(`Couldn't reach bingosync.com: ${error instanceof Error ? error.message : error}`);
+            this.log(`Couldn't reach ${this.baseUrl}: ${error instanceof Error ? error.message : error}`);
             return null;
         }
     }
