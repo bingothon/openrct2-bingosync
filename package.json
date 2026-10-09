@@ -1,6 +1,6 @@
 {
   "name": "openrct2-bingosync",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "OpenRCT2 Bingo Server to interact with Bingosync.com",
   "keywords": [
     "openrct2",
