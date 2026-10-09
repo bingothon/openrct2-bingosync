@@ -1,0 +1,14 @@
+{
+    "openrct2Path": "openrct2",
+    "scenario": "~/.config/OpenRCT2/scenario/bingothon-map.park",
+    "baseUserDirectory": "~/.config/OpenRCT2",
+    "dataDirectory": "~/.config/openrct2-bingo-servers",
+    "headless": true,
+    "tcpPort": 12414,
+    "gameDurationYears": 2,
+    "servers": [
+        { "id": "coop", "mode": "coop", "port": 11753, "name": "Bingo COOP" },
+        { "id": "pvp", "mode": "pvp", "port": 11754, "name": "Bingo PVP" },
+        { "id": "lockout", "mode": "lockout", "port": 11755, "name": "Bingo LOCKOUT" }
+    ]
+}

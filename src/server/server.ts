@@ -1,49 +1,34 @@
 import net from 'net';
 import split2 from 'split2';
-import { handleClientMessage } from './clientHandlers';
+import { ConnectionState, handleClientMessage } from './clientHandlers';
+import { Servers } from '../services/servers';
 
-export function startTcpServer(port: number) {
-    const clients: net.Socket[] = []; // Maintain a list of connected clients
-
+/**
+ * TCP server the OpenRCT2 plugins connect to (one JSON message per line)
+ */
+export function startTcpServer(port: number, servers: Servers) {
     const server = net.createServer((socket) => {
-        console.log("Client connected");
-        clients.push(socket); // Add new client to the list
+        const state: ConnectionState = {};
 
-        socket.pipe(split2()).on("data", (line: string) => {
+        socket.pipe(split2()).on('data', (line: string) => {
+            let msg: any;
             try {
-                console.log(`Received data from client: ${line}`); // Add this log
-                const msg = JSON.parse(line);
-                handleClientMessage(socket, msg);
-            } catch (err) {
-                console.error("Invalid message format:", err);
-                socket.write(JSON.stringify({ error: "Invalid JSON format" }) + "\n");
+                msg = JSON.parse(line);
+            } catch {
+                socket.write(JSON.stringify({ error: 'Invalid JSON format' }) + '\n');
+                return;
             }
+            handleClientMessage(socket, msg, state, servers);
         });
 
-        socket.on("close", () => {
-            console.log("Client disconnected");
-            // Remove the client from the list
-            const index = clients.indexOf(socket);
-            if (index > -1) {
-                clients.splice(index, 1);
-            }
+        socket.on('close', () => {
+            if (state.serverId) console.log(`[${state.serverId}] Plugin disconnected`);
         });
-
-        socket.on("error", (error) => console.error("Socket error:", error));
+        socket.on('error', (error) => console.error('Socket error:', error.message));
     });
 
-    // Handle broadcast events from Twitch IRC
-    server.on("broadcast", (commandData) => {
-        console.log(`Broadcasting command: ${commandData} to ${clients.length} clients`);
-
-        // Forward the command to all connected clients
-        clients.forEach((socket) => {
-            socket.write(JSON.stringify({ action: "command", data: commandData }) + "\n");
-        });
-    });
-
-    server.listen(port, () => {
-        console.log(`Server listening on port ${port}`);
+    server.listen(port, '127.0.0.1', () => {
+        console.log(`Listening for plugins on 127.0.0.1:${port}`);
     });
 
     return server;

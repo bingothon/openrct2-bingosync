@@ -1,8 +1,9 @@
 export enum ClientActions {
+    /** First message of a plugin connection: { serverId } */
+    HELLO = 'hello',
     START = 'start',
     STOP = 'stop',
     RESTART = 'restart',
     CONNECT_OR_CREATE = 'connectOrCreate',
-    GET_BOARD = 'getBoard',
     SELECT_GOAL = 'selectGoal',
 }

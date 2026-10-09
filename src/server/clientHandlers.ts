@@ -1,57 +1,59 @@
 import net from 'net';
-import { startOpenRCT2Server, stopOpenRCT2Server } from '../services/openRCT2';
-import { createOrConnectBoard, getBoard, selectGoal } from '../services/bingoSync';
-import { OpenRCT2Options } from '../types/options';
+import { Servers } from '../services/servers';
 import { ClientActions } from '../types/actions';
 
-let cachedOptions: OpenRCT2Options | null = null;
+/** What a connection told us about itself */
+export interface ConnectionState {
+    serverId?: string;
+}
 
-export async function handleClientMessage(socket: net.Socket, msg: any) {
+function reply(socket: net.Socket, message: object) {
+    socket.write(JSON.stringify(message) + '\n');
+}
+
+export async function handleClientMessage(socket: net.Socket, msg: any, state: ConnectionState, servers: Servers) {
     try {
         switch (msg.action) {
+            case ClientActions.HELLO: {
+                if (!servers.get(msg.serverId)) {
+                    reply(socket, { error: `Unknown server "${msg.serverId}"` });
+                    return;
+                }
+                state.serverId = msg.serverId;
+                console.log(`[${msg.serverId}] Plugin connected`);
+                reply(socket, { message: `Hello ${msg.serverId}` });
+                break;
+            }
             case ClientActions.START:
-                if (!cachedOptions) {
-                    socket.write(JSON.stringify({ error: 'Server options are missing.' }) + '\n');
-                    return;
-                }
-                startOpenRCT2Server(cachedOptions);
-                socket.write(JSON.stringify({ message: 'Server started successfully.' }) + '\n');
-                break;
             case ClientActions.STOP:
-                stopOpenRCT2Server();
-                socket.write(JSON.stringify({ message: 'Server stopped successfully.' }) + '\n');
-                break;
-            case ClientActions.RESTART:
-                console.log('Restarting OpenRCT2 server...');
-                if (!cachedOptions) {
-                    socket.write(JSON.stringify({ error: 'Server options are missing.' }) + '\n');
+            case ClientActions.RESTART: {
+                const id = msg.serverId || state.serverId;
+                const server = servers.get(id);
+                if (!server) {
+                    reply(socket, { error: id ? `Unknown server "${id}"` : 'Say which server (send hello first).' });
                     return;
                 }
-                stopOpenRCT2Server();
-                const options = cachedOptions; // Capture upfront
-                setTimeout(() => {
-                    startOpenRCT2Server(options);
-                    socket.write(JSON.stringify({ message: 'Server restarted successfully.' }) + '\n');
-                }, 3000);
+                if (msg.action === ClientActions.START) server.start();
+                if (msg.action === ClientActions.STOP) await server.stop();
+                if (msg.action === ClientActions.RESTART) {
+                    console.log(`[${id}] Restart requested`);
+                    // The requesting plugin goes down with its server, so don't wait to reply
+                    reply(socket, { message: `Restarting ${id}` });
+                    await server.restart();
+                }
                 break;
+            }
             case ClientActions.CONNECT_OR_CREATE:
-                await createOrConnectBoard(socket, msg.boardData, msg.room_name, msg.username, msg.roomId, msg.roomPassword);
-                break;
-            case ClientActions.GET_BOARD:
-                await getBoard(socket);
+                await servers.session(state.serverId).connectOrCreate(socket, msg);
                 break;
             case ClientActions.SELECT_GOAL:
-                await selectGoal(socket, msg.slot, msg.color, msg.room);
+                await servers.session(state.serverId).selectGoal(socket, msg.slot, msg.color, msg.room);
                 break;
             default:
-                socket.write(JSON.stringify({ error: 'Invalid action' }) + '\n');
+                reply(socket, { error: 'Invalid action' });
         }
     } catch (error) {
         console.error('Error handling client message:', error);
-        socket.write(JSON.stringify({ error: 'Error processing action.' }) + '\n');
+        reply(socket, { error: 'Error processing action.' });
     }
-}
-
-export function cacheOptions(options: OpenRCT2Options) {
-    cachedOptions = options;
 }

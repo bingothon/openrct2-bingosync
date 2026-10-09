@@ -1,5 +1,7 @@
 node_modules
 dist
 .env
+# Your server setup (see servers.example.json)
+servers.json
 # Executables are built by GitHub Actions and attached to GitHub Releases
 releases/
