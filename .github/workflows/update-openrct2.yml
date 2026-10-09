@@ -1,0 +1,26 @@
+# Keeps the game servers on the newest OpenRCT2 release. Every hour it checks for a new release;
+# a new version is only switched to (and the servers restarted) after a smoke test: a lockout game
+# with the plugin must finish its setup on it (see deploy/install-openrct2.sh).
+# Run it by hand to install a specific version (e.g. to go back to an older one).
+name: Update OpenRCT2
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: OpenRCT2 release tag (e.g. v0.5.5) or "latest"
+        default: latest
+        required: true
+
+concurrency:
+  group: game-server
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: [self-hosted, openrct2-bingo-server]
+    steps:
+      - uses: actions/checkout@v4
+      - run: deploy/install-openrct2.sh "${{ inputs.version || 'latest' }}"

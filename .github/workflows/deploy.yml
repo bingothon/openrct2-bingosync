@@ -1,0 +1,54 @@
+# Deploys the server manager to the game server (self-hosted runner) on every push to main:
+# builds the executable, installs it with deploy/servers.production.json and restarts the servers.
+# Changes to deploy/openrct2-bingo.service or deploy/setup-server.sh need a manual
+# `sudo deploy/setup-server.sh` on the server (the runner may only restart the service).
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "deploy/servers.production.json"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: game-server
+  cancel-in-progress: false
+
+env:
+  ROOT: /opt/openrct2-bingo
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, openrct2-bingo-server]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the manager executable
+        run: |
+          npm run build:ts
+          npm run build:ncc
+          npx pkg dist/index.js --targets node18-linux-x64 --output openrct2-bingosync
+
+      - name: Install
+        run: |
+          # Replace the files in one step each, the running ones stay intact until the restart
+          install -m 775 openrct2-bingosync "$ROOT/manager/openrct2-bingosync.new"
+          mv "$ROOT/manager/openrct2-bingosync.new" "$ROOT/manager/openrct2-bingosync"
+          install -m 664 deploy/servers.production.json "$ROOT/servers.json.new"
+          mv "$ROOT/servers.json.new" "$ROOT/servers.json"
+
+      - name: Restart the servers
+        run: sudo -n systemctl restart openrct2-bingo

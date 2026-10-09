@@ -1,0 +1,22 @@
+# Runs the server manager, which runs the OpenRCT2 Bingo servers (see servers.production.json).
+# Installed by deploy/setup-server.sh. Logs: journalctl -u openrct2-bingo -f
+[Unit]
+Description=OpenRCT2 Bingo servers (openrct2-bingosync)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=openrct2
+Group=openrct2
+WorkingDirectory=/opt/openrct2-bingo
+Environment=HOME=/opt/openrct2-bingo
+ExecStart=/opt/openrct2-bingo/manager/openrct2-bingosync --config /opt/openrct2-bingo/servers.json
+# The manager stops all OpenRCT2 servers cleanly on SIGTERM
+KillSignal=SIGTERM
+TimeoutStopSec=40
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
