@@ -25,7 +25,10 @@ cleanup() {
 trap cleanup EXIT
 
 if [ "$VERSION" = "latest" ]; then
-    VERSION=$(curl -fsSL https://api.github.com/repos/OpenRCT2/OpenRCT2/releases/latest | grep -m1 '"tag_name":' | cut -d '"' -f 4)
+    # Read the whole response before parsing: a grep that stops early makes curl fail (pipefail),
+    # and the JSON may be on a single line
+    RELEASE=$(curl -fsSL https://api.github.com/repos/OpenRCT2/OpenRCT2/releases/latest)
+    VERSION=$(grep -o '"tag_name": *"[^"]*"' <<<"$RELEASE" | sed -n '1s/.*"\([^"]*\)"$/\1/p')
     [ -n "$VERSION" ] || { log "Couldn't find the latest OpenRCT2 release"; exit 1; }
 fi
 
