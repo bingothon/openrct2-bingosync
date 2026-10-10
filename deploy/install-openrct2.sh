@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Installs an OpenRCT2 release for the Bingo servers and switches to it, but only after a smoke
 # test: a headless lockout game with the plugin must finish its setup without errors. A version
-# that fails is left installed for inspection and not switched to.
+# that fails is left installed for inspection and not switched to. If the servers don't keep running
+# on the new version after the restart, it switches back to the previous one.
 #
 #   deploy/install-openrct2.sh [<version tag, e.g. v0.5.5> | latest]   (default: latest)
 #
@@ -50,6 +51,9 @@ if [ ! -x "$TARGET/AppRun" ]; then
     (cd "$WORK" && "./$APPIMAGE" --appimage-extract >/dev/null)
     rm -rf "$TARGET"
     mv "$WORK/squashfs-root" "$TARGET"
+    # The unpacked folder is only accessible to the user running this script (the runner), but
+    # the servers run as openrct2
+    chmod -R u=rwX,go=rX "$TARGET"
 fi
 log "Installed: $("$TARGET/AppRun" --version | head -n 1)"
 
@@ -99,5 +103,22 @@ done
 
 if systemctl is-active --quiet openrct2-bingo; then
     log "Restarting the servers"
-    if [ "$(id -u)" -eq 0 ]; then systemctl restart openrct2-bingo; else sudo -n systemctl restart openrct2-bingo; fi
+    restart() { if [ "$(id -u)" -eq 0 ]; then systemctl restart openrct2-bingo; else sudo -n systemctl restart openrct2-bingo; fi; }
+    restart
+
+    # The smoke test runs as this script's user, the servers as openrct2: check the real servers
+    # are still running after their first seconds (the manager gives up after 3 quick crashes)
+    sleep 30
+    expected=$(grep -c '"port"' "$ROOT/servers.json" || true)
+    running=$(pgrep -fc "^$ROOT/openrct2/current/AppRun host" || true)
+    if [ "$running" -lt "$expected" ]; then
+        log "Only $running of $expected servers are running on $VERSION"
+        if [ -n "$CURRENT" ] && [ -x "$ROOT/openrct2/$CURRENT/AppRun" ]; then
+            log "Switching back to $CURRENT"
+            ln -sfn "$CURRENT" "$ROOT/openrct2/current"
+            restart
+        fi
+        exit 1
+    fi
+    log "All $running servers are running on $VERSION"
 fi
