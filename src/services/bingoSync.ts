@@ -152,7 +152,8 @@ export class BingoSyncSession {
         return 'Room ID not found in response data.';
     }
 
-    async selectGoal(socket: net.Socket, slot: string, color: string, room?: string) {
+    /** Marks a square in the colour, or unmarks it with remove (a player who left, see the plugin) */
+    async selectGoal(socket: net.Socket, slot: string, color: string, room?: string, remove = false) {
         const roomId = room || this.roomId;
         try {
             if (!roomId) {
@@ -168,7 +169,7 @@ export class BingoSyncSession {
 
             const response = await this.client.put(
                 `${this.baseUrl}api/select`,
-                JSON.stringify({ room: roomId, slot, color, remove_color: false }),
+                JSON.stringify({ room: roomId, slot, color, remove_color: remove }),
                 {
                     headers: {
                         'Content-Type': 'application/json',
@@ -179,7 +180,7 @@ export class BingoSyncSession {
             );
 
             if (response.status === 200) {
-                writeMessage(socket, { message: `Goal in slot ${slot} selected with color ${color}.` });
+                writeMessage(socket, { message: `Goal in slot ${slot} ${remove ? 'unmarked' : 'selected'} with color ${color}.` });
             } else {
                 console.error(`[${this.name}] [BingoSync] Unexpected response ${response.status}:`, response.data);
                 writeMessage(socket, { error: `Failed to select goal. Status: ${response.status}.` });

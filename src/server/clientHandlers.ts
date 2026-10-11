@@ -47,7 +47,7 @@ export async function handleClientMessage(socket: net.Socket, msg: any, state: C
                 await servers.session(state.serverId).connectOrCreate(socket, msg);
                 break;
             case ClientActions.SELECT_GOAL:
-                await servers.session(state.serverId).selectGoal(socket, msg.slot, msg.color, msg.room);
+                await servers.session(state.serverId).selectGoal(socket, msg.slot, msg.color, msg.room, msg.remove === true);
                 break;
             default:
                 reply(socket, { error: 'Invalid action' });
