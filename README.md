@@ -33,7 +33,7 @@ Stop it with Ctrl+C; that stops all servers.
 | `dataDirectory` | `~/.config/openrct2-bingo-servers` | Each server gets its own OpenRCT2 user folder in here |
 | `headless` | `true` | Run the servers without a game window |
 | `tcpPort` | `12414` | Port the plugin connects to (local only) |
-| `gameDurationYears` | `2` | Game length in in-game years |
+| `gameDurationYears` | `4` | Game length in in-game years |
 | `bingosyncUrl` | `https://bingosync.bingothon.com/` | BingoSync instance the games' rooms are created on |
 
 Each server's folder gets a copy of `config.ini`, `groups.json`, `users.json` (admins) and `objects.idx` the first time (edit the copy to change one server, e.g. its groups) and shares `object/` and `plugin/` with the base folder, so all servers use the same plugin build.

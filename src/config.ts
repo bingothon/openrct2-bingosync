@@ -39,7 +39,7 @@ const DEFAULTS: Omit<ManagerConfig, 'servers' | 'scenario'> = {
     dataDirectory: '~/.config/openrct2-bingo-servers',
     headless: true,
     tcpPort: 12414,
-    gameDurationYears: 2,
+    gameDurationYears: 4,
     bingosyncUrl: 'https://bingosync.bingothon.com/',
 };
 
